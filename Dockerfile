@@ -1,12 +1,12 @@
-# 📦 Base PHP CLI
+# Étape 1 : base PHP avec extensions nécessaires
 FROM php:8.2-cli
 
-# 🧰 Dépendances système
+# Installer les dépendances système
 RUN apt-get update && apt-get install -y \
     git \
     curl \
-    zip \
     unzip \
+    zip \
     libzip-dev \
     libpng-dev \
     libonig-dev \
@@ -29,31 +29,23 @@ RUN apt-get update && apt-get install -y \
         pcntl \
         intl
 
-# 🧰 Installer Composer
+# Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 📁 Répertoire de travail
+# Créer un dossier de travail
 WORKDIR /var/www
 
-# 📁 Copier le reste du projet
+# Copier tout le code
 COPY . .
 
-# 🔁 Pré-copie pour cache Composer
-COPY composer.json composer.lock ./
+# Installer les dépendances PHP
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader
 
+# Installer les dépendances JS et builder les assets Vite
+RUN npm install && npm run build
 
-# 🧶 Installer les dépendances front + compiler Vite
-RUN npm install
-RUN npm run build
+# Fixer les permissions
+RUN chown -R www-data:www-data /var/www && chmod -R 755 /var/www/storage
 
-# 🔧 Installer Node.js (optionnel si tu utilises Vite)
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs=20.* --allow-downgrades
-
-# 🗂️ Donner les droits nécessaires
-RUN chown -R www-data:www-data /var/www && \
-    chmod -R 755 /var/www/storage
-
-# 🚀 Commande de démarrage
-CMD sh -c "php artisan migrate --force || echo 'Migration failed' && php artisan serve --host=0.0.0.0 --port=8000"
+# Commande de lancement Laravel
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
